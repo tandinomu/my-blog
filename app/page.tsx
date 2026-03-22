@@ -81,7 +81,7 @@ export default async function Home() {
             color: "#4a7fc1", letterSpacing: "0.16em",
             textTransform: "uppercase", marginBottom: "1rem",
           }}>
-            Student notes
+            Notes
           </p>
           <p style={{
             fontFamily: "'Lato', sans-serif",
@@ -112,7 +112,7 @@ export default async function Home() {
         {/* Articles */}
         <div>
           <div className="section-label" style={{ marginBottom: "2rem" }}>
-            Notes and Articles
+            Notes
           </div>
 
           {posts.length === 0 ? (
