@@ -31,7 +31,7 @@ export default function AboutPage() {
           fontWeight: 600, letterSpacing: "0.08em",
           textTransform: "uppercase", marginBottom: "2rem",
         }}>
-          CS Student
+          CST Student
         </p>
 
         {/* Divider */}
@@ -47,7 +47,7 @@ export default function AboutPage() {
             fontSize: "0.9rem", color: "rgba(200,212,232,0.65)",
             lineHeight: 1.85,
           }}>
-            Hi, I am Tandin Om U — a computer science student sharing notes
+            Hi, I am Tandin Om U — a software engineering student sharing notes
             on what I am learning. This blog is my way of studying in public,
             writing down things that confused me, things that clicked, and
             everything in between.
@@ -56,8 +56,7 @@ export default function AboutPage() {
             fontSize: "0.9rem", color: "rgba(200,212,232,0.65)",
             lineHeight: 1.85,
           }}>
-            I write mostly about web development — Next.js, React, databases,
-            and the tools I use day to day. If something helped me understand
+            I write mostly about the modules I take in college, the projects I do and the tools I use day to day. If something helped me understand
             a concept, I write it down here so it might help someone else too.
           </p>
           <p style={{
