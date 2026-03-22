@@ -11,6 +11,17 @@ async function getRecentPosts(): Promise<Post[]> {
   return data || [];
 }
 
+// Generate random squares spread like stars across the whole hero
+const squares = Array.from({ length: 60 }, (_, i) => ({
+  w: Math.floor(Math.random() * 14) + 8,
+  bg: ["#1a3a6e","#2a5aaa","#4a7fc1","#0d2050","#3a6aaa","#5a8fd1"][i % 6],
+  t: Math.floor(Math.random() * 340),
+  l: Math.floor(Math.random() * 95),
+  d: (2.5 + Math.random() * 3).toFixed(1) + "s",
+  dl: (Math.random() * 3).toFixed(1) + "s",
+  op: (0.4 + Math.random() * 0.6).toFixed(2),
+}));
+
 export default async function Home() {
   const posts = await getRecentPosts();
 
@@ -21,7 +32,7 @@ export default async function Home() {
       {/* HERO */}
       <div style={{
         position: "relative",
-        height: "380px",
+        height: "420px",
         overflow: "hidden",
         background: "linear-gradient(180deg, #0d1a35 0%, #0a0e1a 100%)",
       }}>
@@ -33,48 +44,28 @@ export default async function Home() {
           <path d="M0,240 L0,215 Q360,170 720,200 Q1080,230 1440,205 L1440,240 Z" fill="#0a1020"/>
         </svg>
 
-        {/* Floating squares — right side */}
-        <div style={{ position: "absolute", right: "100px", top: "30px", width: "360px", height: "300px", zIndex: 2 }}>
-          {[
-            { w:20,h:20,bg:"#1a3a6e",t:5,l:55,d:"3.2s",dl:"0s" },
-            { w:20,h:20,bg:"#2a5aaa",t:-5,l:92,d:"3.6s",dl:"0.2s" },
-            { w:20,h:20,bg:"#1a3a6e",t:-12,l:130,d:"2.9s",dl:"0.4s" },
-            { w:20,h:20,bg:"#0d2050",t:-15,l:170,d:"3.3s",dl:"0.1s" },
-            { w:20,h:20,bg:"#2a5aaa",t:-10,l:210,d:"3.7s",dl:"0.3s" },
-            { w:20,h:20,bg:"#4a7fc1",t:-2,l:250,d:"3s",dl:"0.5s" },
-            { w:20,h:20,bg:"#1a3a6e",t:14,l:285,d:"3.4s",dl:"0.2s" },
-            { w:17,h:17,bg:"#4a7fc1",t:36,l:30,d:"3.1s",dl:"0.6s" },
-            { w:17,h:17,bg:"#0d2050",t:24,l:65,d:"3.5s",dl:"0.3s" },
-            { w:17,h:17,bg:"#2a5aaa",t:18,l:100,d:"2.8s",dl:"0.1s" },
-            { w:17,h:17,bg:"#1a3a6e",t:14,l:138,d:"3.6s",dl:"0.4s" },
-            { w:17,h:17,bg:"#4a7fc1",t:18,l:175,d:"3.2s",dl:"0.2s" },
-            { w:17,h:17,bg:"#0d2050",t:28,l:212,d:"2.9s",dl:"0.5s" },
-            { w:17,h:17,bg:"#2a5aaa",t:44,l:246,d:"3.8s",dl:"0.3s" },
-            { w:14,h:14,bg:"#2a5aaa",t:68,l:14,d:"3s",dl:"0.7s" },
-            { w:14,h:14,bg:"#1a3a6e",t:56,l:46,d:"3.4s",dl:"0.2s" },
-            { w:14,h:14,bg:"#4a7fc1",t:50,l:78,d:"2.7s",dl:"0.4s" },
-            { w:14,h:14,bg:"#0d2050",t:48,l:112,d:"3.1s",dl:"0.1s" },
-            { w:14,h:14,bg:"#2a5aaa",t:52,l:146,d:"3.5s",dl:"0.3s" },
-            { w:14,h:14,bg:"#1a3a6e",t:60,l:178,d:"2.8s",dl:"0.6s" },
-            { w:12,h:12,bg:"#0d2050",t:98,l:6,d:"3.2s",dl:"0.5s" },
-            { w:12,h:12,bg:"#4a7fc1",t:88,l:36,d:"3.7s",dl:"0.2s" },
-            { w:12,h:12,bg:"#1a3a6e",t:84,l:66,d:"2.9s",dl:"0.4s" },
-            { w:12,h:12,bg:"#2a5aaa",t:86,l:96,d:"3.3s",dl:"0.1s" },
-            { w:12,h:12,bg:"#4a7fc1",t:94,l:125,d:"3.6s",dl:"0.3s" },
-          ].map((sq, i) => (
+        {/* Stars/squares spread across whole hero */}
+        <div style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}>
+          {squares.map((sq, i) => (
             <div key={i} style={{
               position: "absolute",
-              width: sq.w, height: sq.h,
+              width: sq.w,
+              height: sq.w,
               background: sq.bg,
               borderRadius: "3px",
-              top: sq.t, left: sq.l,
+              top: `${sq.t}px`,
+              left: `${sq.l}%`,
+              opacity: Number(sq.op),
               animation: `sqFloat ${sq.d} ease-in-out infinite ${sq.dl}`,
             }} />
           ))}
         </div>
 
-        {/* Hero text — left */}
-        <div style={{ position: "absolute", left: "3rem", top: "50%", transform: "translateY(-50%)", zIndex: 2 }}>
+        {/* Hero text — left, above the hills */}
+        <div style={{
+          position: "absolute", left: "3rem",
+          top: "50%", transform: "translateY(-60%)", zIndex: 3,
+        }}>
           <p style={{
             fontFamily: "'Lato', sans-serif",
             fontSize: "0.72rem", fontWeight: 700,
@@ -95,8 +86,9 @@ export default async function Home() {
 
         <style>{`
           @keyframes sqFloat {
-            0%,100% { transform: translateY(0); }
-            50%      { transform: translateY(-8px); }
+            0%   { transform: translateY(0px) rotate(0deg); opacity: inherit; }
+            50%  { transform: translateY(-14px) rotate(8deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
           }
         `}</style>
       </div>
@@ -112,7 +104,7 @@ export default async function Home() {
         {/* Articles */}
         <div>
           <div className="section-label" style={{ marginBottom: "2rem" }}>
-            Notes
+            Notes and Projects
           </div>
 
           {posts.length === 0 ? (
