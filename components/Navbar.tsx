@@ -36,7 +36,7 @@ export default function Navbar() {
       </Link>
 
       <div style={{ display: "flex", alignItems: "center", gap: "2.5rem" }}>
-        <Link href="/blog" style={{
+        <Link href="/" style={{ fontSize: "0.88rem", fontWeight: 500, color: "rgba(200,212,232,0.55)", textDecoration: "none", }}> Home </Link> <Link href="/blog" style={{
           fontSize: "0.88rem", fontWeight: 500,
           color: "rgba(200,212,232,0.55)", textDecoration: "none",
         }}>
