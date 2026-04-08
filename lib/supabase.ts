@@ -1,18 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Public client - for reading posts (used in frontend)
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Admin client - for writing posts (used in API routes only, never expose to client)
-export const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Public client — safe to use anywhere
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Type for a blog post
+// Admin client — only used in API routes (server-side only)
+export function getSupabaseAdmin() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  return createClient(supabaseUrl, serviceKey);
+}
+
 export type Post = {
   id: number;
   title: string;
@@ -23,3 +23,9 @@ export type Post = {
   created_at: string;
   author_id: string;
 };
+
+export function readTime(content: string): string {
+  const words = content.trim().split(/\s+/).length;
+  const mins = Math.ceil(words / 200);
+  return `${mins} min read`;
+}

@@ -1,114 +1,224 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import Navbar from "@/components/Navbar";
 
+function parseMarkdown(md: string): string {
+  return md
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
+    .replace(/^\> (.+)$/gm, "<blockquote>$1</blockquote>")
+    .replace(/^- (.+)$/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>")
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/^(?!<[hublpa])/gm, "")
+    .replace(/(.+)/s, "<p>$1</p>");
+}
+
+function wordCount(text: string) {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const mins = Math.ceil(words / 200);
+  return { words, mins };
+}
+
+const DRAFT_KEY = "tandin_blog_draft";
+
 export default function WritePage() {
   const { userId } = useAuth();
   const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [tags, setTags] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ title: "", excerpt: "", content: "", tags: "" });
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [drafts, setDrafts] = useState<any[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const autoSaveRef = useRef<NodeJS.Timeout>();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { words, mins } = wordCount(content);
+
+  // Load drafts from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try { setDrafts(JSON.parse(saved)); } catch {}
+    }
+  }, []);
+
+  // Autosave every 30s and on every keystroke (debounced)
+  const saveDraft = useCallback(() => {
+    if (!title && !content) return;
+    setSaveStatus("saving");
+    const draft = { id: Date.now(), title, content, excerpt, tags, savedAt: new Date().toISOString() };
+    const existing = JSON.parse(localStorage.getItem(DRAFT_KEY) || "[]");
+    const updated = [draft, ...existing.filter((d: any) => d.title !== title).slice(0, 9)];
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(updated));
+    setDrafts(updated);
+    setTimeout(() => setSaveStatus("saved"), 300);
+    setTimeout(() => setSaveStatus("idle"), 2500);
+  }, [title, content, excerpt, tags]);
+
+  useEffect(() => {
+    clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(saveDraft, 1500);
+    return () => clearTimeout(autoSaveRef.current);
+  }, [title, content, excerpt, tags, saveDraft]);
+
+  // Markdown toolbar
+  function insertMarkdown(before: string, after = "") {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = content.slice(start, end);
+    const newContent = content.slice(0, start) + before + selected + after + content.slice(end);
+    setContent(newContent);
+    setTimeout(() => {
+      ta.focus();
+      ta.setSelectionRange(start + before.length, start + before.length + selected.length);
+    }, 0);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!userId) return;
     setLoading(true);
     setError("");
-
-    const tags = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
-    const slug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
+    const tagArr = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: form.title, slug, excerpt: form.excerpt, content: form.content, tags, author_id: userId }),
+      body: JSON.stringify({ title, slug, excerpt, content, tags: tagArr, author_id: userId }),
     });
-
     const data = await res.json();
     if (!res.ok) { setError(data.error || "Failed to publish"); setLoading(false); return; }
     router.push(`/blog/${data.slug}`);
   }
 
-  const inputStyle = {
+  function loadDraft(draft: any) {
+    setTitle(draft.title);
+    setContent(draft.content);
+    setExcerpt(draft.excerpt || "");
+    setTags(draft.tags || "");
+    setShowDrafts(false);
+  }
+
+  const inputBase = {
     width: "100%",
-    background: "rgba(13,24,48,0.8)",
-    border: "1px solid rgba(74,127,193,0.2)",
-    color: "rgba(200,212,232,0.9)",
-    padding: "0.75rem 1rem",
+    background: "var(--paper-2)",
+    border: "1px solid var(--border)",
+    color: "var(--ink)",
+    padding: "0.7rem 1rem",
     fontFamily: "'Lato', sans-serif",
-    fontSize: "0.85rem",
+    fontSize: "0.88rem",
+    borderRadius: "4px",
     outline: "none",
-    borderRadius: "6px",
-    transition: "border-color 0.2s",
   } as React.CSSProperties;
 
-  const labelStyle = {
-    display: "block",
-    fontSize: "0.7rem",
-    fontWeight: 600,
-    letterSpacing: "0.12em",
-    color: "rgba(74,127,193,0.9)",
-    textTransform: "uppercase" as const,
-    marginBottom: "0.4rem",
-    fontFamily: "'Lato', sans-serif",
-  };
+  const toolbarBtn = {
+    background: "none",
+    border: "1px solid var(--border)",
+    color: "var(--muted)",
+    cursor: "pointer",
+    padding: "0.3rem 0.6rem",
+    borderRadius: "3px",
+    fontFamily: "'JetBrains Mono', monospace",
+    fontSize: "0.78rem",
+    transition: "all 0.15s",
+  } as React.CSSProperties;
 
   return (
     <>
       <Navbar />
-      <main style={{ maxWidth: "700px", margin: "0 auto", padding: "4rem 3rem" }}>
-        <div className="section-label" style={{ marginBottom: "0.75rem" }}>New Note</div>
-        <h1 style={{
-          fontFamily: "'Fraunces', serif", fontWeight: 900,
-          fontSize: "2rem", color: "#7eb3ff",
-          letterSpacing: "-0.03em", marginBottom: "2.5rem",
-        }}>
-          Write something
-        </h1>
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <main style={{ maxWidth: "1200px", margin: "0 auto", padding: "2.5rem 3rem" }}>
+        {/* Header row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <div>
-            <label style={labelStyle}>Title</label>
-            <input type="text" required placeholder="What did you learn today?" value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })} style={inputStyle} />
+            <span className="section-label">New Note</span>
+            <div style={{ fontSize: "0.72rem", color: "var(--muted)", marginTop: "0.3rem" }}>
+              {words} words · {mins} min read
+              {saveStatus === "saving" && <span style={{ marginLeft: "1rem", color: "var(--accent)" }}>Saving...</span>}
+              {saveStatus === "saved" && <span style={{ marginLeft: "1rem", color: "#22c55e" }}>Saved</span>}
+            </div>
           </div>
-          <div>
-            <label style={labelStyle}>Short description</label>
-            <input type="text" required placeholder="One sentence about this note..." value={form.excerpt}
-              onChange={(e) => setForm({ ...form, excerpt: e.target.value })} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Content</label>
-            <textarea required rows={16} placeholder="Write your note here..." value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              style={{ ...inputStyle, resize: "vertical", lineHeight: 1.75 }} />
-          </div>
-          <div>
-            <label style={labelStyle}>Tags (comma separated)</label>
-            <input type="text" placeholder="nextjs, react, study" value={form.tags}
-              onChange={(e) => setForm({ ...form, tags: e.target.value })} style={inputStyle} />
-          </div>
-
-          {error && (
-            <p style={{ color: "#7eb3ff", fontSize: "0.8rem", padding: "0.75rem 1rem",
-              border: "1px solid rgba(74,127,193,0.3)", background: "rgba(26,58,110,0.2)", borderRadius: "6px" }}>
-              {error}
-            </p>
-          )}
-
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <button type="submit" disabled={loading} className="btn-primary"
-              style={{ opacity: loading ? 0.5 : 1, fontSize: "0.85rem", padding: "0.6rem 1.8rem" }}>
-              {loading ? "Publishing..." : "Publish note"}
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+            <button className="btn-ghost" onClick={() => setShowDrafts(!showDrafts)} style={{ fontSize: "0.75rem", position: "relative" }}>
+              Drafts {drafts.length > 0 && <span style={{ background: "var(--accent)", color: "#fff", borderRadius: "999px", fontSize: "0.6rem", padding: "0.1rem 0.4rem", marginLeft: "0.3rem" }}>{drafts.length}</span>}
             </button>
-            <button type="button" className="btn-ghost" onClick={() => router.back()}
-              style={{ fontSize: "0.85rem", padding: "0.6rem 1.5rem" }}>
-              Cancel
+            <button className="btn-primary" onClick={handleSubmit as any} disabled={loading} style={{ fontSize: "0.75rem", opacity: loading ? 0.5 : 1 }}>
+              {loading ? "Publishing..." : "Publish"}
             </button>
           </div>
-        </form>
+        </div>
+
+        {/* Drafts panel */}
+        {showDrafts && drafts.length > 0 && (
+          <div style={{ background: "var(--paper-2)", border: "1px solid var(--border)", borderRadius: "6px", padding: "1rem", marginBottom: "1.5rem" }}>
+            <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted)", marginBottom: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>Saved Drafts</p>
+            {drafts.map((d) => (
+              <div key={d.id} onClick={() => loadDraft(d)} style={{ padding: "0.5rem 0", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>{d.title || "Untitled"}</span>
+                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{new Date(d.savedAt).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Meta fields */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+          <input placeholder="Title *" value={title} onChange={(e) => setTitle(e.target.value)} style={{ ...inputBase, fontFamily: "'Playfair Display', serif", fontSize: "1rem", gridColumn: "1 / -1" }} />
+          <input placeholder="Short description *" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} style={{ ...inputBase, gridColumn: "1 / 3" }} />
+          <input placeholder="Tags (comma separated)" value={tags} onChange={(e) => setTags(e.target.value)} style={inputBase} />
+        </div>
+
+        {/* Markdown toolbar */}
+        <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
+          {[
+            { label: "B", action: () => insertMarkdown("**", "**"), title: "Bold" },
+            { label: "I", action: () => insertMarkdown("*", "*"), title: "Italic" },
+            { label: "H1", action: () => insertMarkdown("# "), title: "Heading 1" },
+            { label: "H2", action: () => insertMarkdown("## "), title: "Heading 2" },
+            { label: "H3", action: () => insertMarkdown("### "), title: "Heading 3" },
+            { label: "`code`", action: () => insertMarkdown("`", "`"), title: "Inline code" },
+            { label: "> quote", action: () => insertMarkdown("> "), title: "Blockquote" },
+            { label: "- list", action: () => insertMarkdown("- "), title: "List item" },
+            { label: "link", action: () => insertMarkdown("[", "](url)"), title: "Link" },
+          ].map((b) => (
+            <button key={b.label} onClick={b.action} style={toolbarBtn} title={b.title}>{b.label}</button>
+          ))}
+          <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--muted)", alignSelf: "center" }}>Write · Preview</span>
+        </div>
+
+        {/* Editor + Preview */}
+        <div className="md-editor">
+          <textarea
+            ref={textareaRef}
+            className="md-input"
+            placeholder="Write your note in markdown...
+
+# Heading
+**bold**, *italic*, `code`
+
+> blockquote
+
+- list item"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <div className="md-preview prose-content" dangerouslySetInnerHTML={{ __html: content ? parseMarkdown(content) : '<p style="opacity:0.3">Preview appears here...</p>' }} />
+        </div>
+
+        {error && <p style={{ color: "red", fontSize: "0.82rem", marginTop: "1rem" }}>{error}</p>}
       </main>
     </>
   );
