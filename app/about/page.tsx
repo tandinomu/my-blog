@@ -18,8 +18,8 @@ export default function AboutPage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
           {[
-            "Hi, I am Tandin Om U — a computer science student sharing notes on what I am learning. This blog is my way of studying in public, writing down things that confused me, things that clicked, and everything in between.",
-            "I write mostly about web development — Next.js, React, databases, and the tools I use day to day. If something helped me understand a concept, I write it down here so it might help someone else too.",
+            "Hi, I am Tandin Om U — a software engineering student sharing notes on what I am learning. This blog is my way of studying in public, writing down things that confused me, things that clicked, and everything in between.",
+            "I write mostly about things i learned in class and the tools I use day to day. If something helped me understand a concept, I write it down here so it might help someone else too.",
             "This blog is built with Next.js, Clerk, and Supabase — and yes, building it taught me more than any tutorial.",
           ].map((p, i) => (
             <p key={i} style={{ fontSize: "1rem", color: "var(--ink)", lineHeight: 1.85, opacity: 0.8 }}>{p}</p>
