@@ -22,6 +22,7 @@ export type Post = {
   tags: string[];
   created_at: string;
   author_id: string;
+  author_name: string;
 };
 
 export function readTime(content: string): string {

@@ -53,7 +53,7 @@ function Hills({ dark }: { dark: boolean }) {
   );
 }
 
-export default function HomeClient({ posts, allTags }: { posts: Post[]; allTags: string[] }) {
+export default function HomeClient({ posts, allTags, likeCounts }: { posts: Post[]; allTags: string[]; likeCounts: Record<number, number> }) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [dark, setDark] = useState(true);
   const filtered = activeTag ? posts.filter((p) => p.tags?.includes(activeTag)) : posts;
@@ -161,6 +161,9 @@ export default function HomeClient({ posts, allTags }: { posts: Post[]; allTags:
                     {post.tags?.slice(0, 2).map(t => (
                       <span key={t} style={{ fontSize: "0.7rem", color: "var(--muted)" }}>{t}</span>
                     ))}
+                    {post.author_name && (
+                      <span style={{ fontSize: "0.7rem", color: "var(--muted)", marginLeft: "auto" }}>by {post.author_name}</span>
+                    )}
                   </div>
                 </div>
               </Fade>
@@ -185,17 +188,25 @@ export default function HomeClient({ posts, allTags }: { posts: Post[]; allTags:
             </Fade>
           )}
 
-          {posts.length > 0 && (
-            <Fade delay="0.1s">
-              <p className="section-label" style={{ marginBottom: "1.2rem" }}>Popular Content</p>
-              {posts.slice(0, 6).map((post) => (
-                <Link key={post.id} href={`/blog/${post.slug}`} className="sidebar-link">
-                  <span className="arrow">→</span>
-                  <span>{post.title}</span>
-                </Link>
-              ))}
-            </Fade>
-          )}
+          {(() => {
+            const popular = [...posts]
+              .filter((p) => (likeCounts[p.id] || 0) > 0)
+              .sort((a, b) => (likeCounts[b.id] || 0) - (likeCounts[a.id] || 0))
+              .slice(0, 6);
+            return (
+              <Fade delay="0.1s">
+                <p className="section-label" style={{ marginBottom: "1.2rem" }}>Popular Notes</p>
+                {popular.map((post) => (
+                  <Link key={post.id} href={`/blog/${post.slug}`} className="sidebar-link" style={{ alignItems: "center" }}>
+                    <span style={{ fontSize: "0.72rem", color: "#ef4444", minWidth: "2rem" }}>
+                      ♥ {likeCounts[post.id]}
+                    </span>
+                    <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>{post.title}</span>
+                  </Link>
+                ))}
+              </Fade>
+            );
+          })()}
         </div>
       </div>
 

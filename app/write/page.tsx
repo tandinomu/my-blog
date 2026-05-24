@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import Navbar from "@/components/Navbar";
 
 function parseMarkdown(md: string): string {
@@ -14,11 +14,12 @@ function parseMarkdown(md: string): string {
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/^\> (.+)$/gm, "<blockquote>$1</blockquote>")
     .replace(/^- (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>)/gs, "<ul>$1</ul>")
+    .replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>")
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px;margin:0.5rem 0;" />')
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
     .replace(/\n\n/g, "</p><p>")
     .replace(/^(?!<[hublpa])/gm, "")
-    .replace(/(.+)/s, "<p>$1</p>");
+    .replace(/[\s\S]+/, (m) => `<p>${m}</p>`);
 }
 
 function wordCount(text: string) {
@@ -31,6 +32,8 @@ const DRAFT_KEY = "tandin_blog_draft";
 
 export default function WritePage() {
   const { userId } = useAuth();
+  const { user } = useUser();
+  const authorName = user?.fullName || user?.username || "Anonymous";
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -41,8 +44,10 @@ export default function WritePage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [drafts, setDrafts] = useState<any[]>([]);
   const [showDrafts, setShowDrafts] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const autoSaveRef = useRef<NodeJS.Timeout>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { words, mins } = wordCount(content);
 
@@ -98,11 +103,27 @@ export default function WritePage() {
     const res = await fetch("/api/posts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, slug, excerpt, content, tags: tagArr, author_id: userId }),
+      body: JSON.stringify({ title, slug, excerpt, content, tags: tagArr, author_id: userId, author_name: authorName }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error || "Failed to publish"); setLoading(false); return; }
+    router.refresh();
     router.push(`/blog/${data.slug}`);
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const data = await res.json();
+    setUploading(false);
+    if (!res.ok) { setError(data.error || "Image upload failed"); return; }
+    insertMarkdown(`\n![${file.name}](${data.url})\n`);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function loadDraft(draft: any) {
@@ -111,6 +132,12 @@ export default function WritePage() {
     setExcerpt(draft.excerpt || "");
     setTags(draft.tags || "");
     setShowDrafts(false);
+  }
+
+  function deleteDraft(id: number) {
+    const updated = drafts.filter((d) => d.id !== id);
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(updated));
+    setDrafts(updated);
   }
 
   const inputBase = {
@@ -155,6 +182,20 @@ export default function WritePage() {
             <button className="btn-ghost" onClick={() => setShowDrafts(!showDrafts)} style={{ fontSize: "0.75rem", position: "relative" }}>
               Drafts {drafts.length > 0 && <span style={{ background: "var(--accent)", color: "#fff", borderRadius: "999px", fontSize: "0.6rem", padding: "0.1rem 0.4rem", marginLeft: "0.3rem" }}>{drafts.length}</span>}
             </button>
+            <button
+              onClick={() => {
+                if (!title && !content) return;
+                if (confirm("Delete this draft?")) {
+                  const updated = drafts.filter((d) => d.title !== title);
+                  localStorage.setItem(DRAFT_KEY, JSON.stringify(updated));
+                  setDrafts(updated);
+                  setTitle(""); setContent(""); setExcerpt(""); setTags("");
+                }
+              }}
+              style={{ background: "none", border: "1px solid #ef4444", color: "#ef4444", padding: "0.42rem 1rem", borderRadius: "6px", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}
+            >
+              Delete draft
+            </button>
             <button className="btn-primary" onClick={handleSubmit as any} disabled={loading} style={{ fontSize: "0.75rem", opacity: loading ? 0.5 : 1 }}>
               {loading ? "Publishing..." : "Publish"}
             </button>
@@ -166,9 +207,19 @@ export default function WritePage() {
           <div style={{ background: "var(--paper-2)", border: "1px solid var(--border)", borderRadius: "6px", padding: "1rem", marginBottom: "1.5rem" }}>
             <p style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--muted)", marginBottom: "0.75rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>Saved Drafts</p>
             {drafts.map((d) => (
-              <div key={d.id} onClick={() => loadDraft(d)} style={{ padding: "0.5rem 0", borderBottom: "1px solid var(--border)", cursor: "pointer", display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>{d.title || "Untitled"}</span>
-                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>{new Date(d.savedAt).toLocaleTimeString()}</span>
+              <div key={d.id} style={{ padding: "0.5rem 0", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>{d.title || "Untitled"}</span>
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)", marginLeft: "0.75rem" }}>{new Date(d.savedAt).toLocaleTimeString()}</span>
+                </div>
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <button onClick={() => loadDraft(d)} style={{ background: "none", border: "1px solid var(--border)", color: "var(--muted)", padding: "0.2rem 0.6rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600 }}>
+                    Edit
+                  </button>
+                  <button onClick={() => deleteDraft(d.id)} style={{ background: "none", border: "1px solid #ef4444", color: "#ef4444", padding: "0.2rem 0.6rem", borderRadius: "4px", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600 }}>
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -196,6 +247,15 @@ export default function WritePage() {
           ].map((b) => (
             <button key={b.label} onClick={b.action} style={toolbarBtn} title={b.title}>{b.label}</button>
           ))}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{ ...toolbarBtn, opacity: uploading ? 0.5 : 1 }}
+            title="Upload image"
+            disabled={uploading}
+          >
+            {uploading ? "uploading..." : "image"}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
           <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--muted)", alignSelf: "center" }}>Write · Preview</span>
         </div>
 

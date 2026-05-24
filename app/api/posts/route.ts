@@ -7,9 +7,9 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json();
-    const { title, slug, excerpt, content, tags } = body;
+    const { title, slug, excerpt, content, tags, author_name } = body;
     if (!title || !slug || !content) return NextResponse.json({ error: "title, slug, and content are required" }, { status: 400 });
-    const { data, error } = await getSupabaseAdmin().from("posts").insert({ title, slug, excerpt: excerpt || "", content, tags: tags || [], author_id: userId }).select().single();
+    const { data, error } = await getSupabaseAdmin().from("posts").insert({ title, slug, excerpt: excerpt || "", content, tags: tags || [], author_id: userId, author_name: author_name || "Anonymous" }).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data, { status: 201 });
   } catch {

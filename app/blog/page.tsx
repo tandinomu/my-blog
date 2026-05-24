@@ -2,6 +2,8 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { supabase, Post, readTime } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 async function getAllPosts(): Promise<Post[]> {
   const { data } = await supabase.from("posts").select("*").order("created_at", { ascending: false });
   return data || [];
@@ -31,9 +33,14 @@ export default async function BlogPage() {
             <p>{post.excerpt}</p>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Link href={`/blog/${post.slug}`} className="read-more">Read more →</Link>
-              <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
-                {new Date(post.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-              </span>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                {post.author_name && (
+                  <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>by {post.author_name}</span>
+                )}
+                <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>
+                  {new Date(post.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </span>
+              </div>
             </div>
           </div>
         ))}

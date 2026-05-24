@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton, useAuth } from "@clerk/nextjs";
 
 export default function Navbar() {
   const { isSignedIn } = useAuth();
+  const pathname = usePathname();
   const [dark, setDark] = useState(true);
 
   useEffect(() => {
@@ -50,13 +52,24 @@ export default function Navbar() {
 
       <div style={{ display: "flex", alignItems: "center", gap: "2.5rem" }}>
         {/* Nav links */}
-        {["Home", "Notes", "About"].map((label) => (
-          <Link key={label} href={label === "Home" ? "/" : label === "Notes" ? "/blog" : "/about"} style={{
-            fontSize: "0.88rem", fontWeight: 500,
-            color: dark ? "rgba(200,212,232,0.55)" : "rgba(10,22,40,0.55)",
-            textDecoration: "none", transition: "color 0.3s",
-          }}>{label}</Link>
-        ))}
+        {[
+          { label: "Home", href: "/" },
+          { label: "Notes", href: "/blog" },
+          { label: "About", href: "/about" },
+        ].map(({ label, href }) => {
+          const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <Link key={label} href={href} style={{
+              fontSize: "0.88rem", fontWeight: isActive ? 700 : 500,
+              color: isActive
+                ? (dark ? "rgba(200,212,232,1)" : "rgba(10,22,40,1)")
+                : (dark ? "rgba(200,212,232,0.45)" : "rgba(10,22,40,0.45)"),
+              textDecoration: "none", transition: "color 0.3s",
+              borderBottom: isActive ? `2px solid ${dark ? "#7eb3ff" : "#0d2f6e"}` : "2px solid transparent",
+              paddingBottom: "2px",
+            }}>{label}</Link>
+          );
+        })}
 
         {/* Theme toggle — exact same subtle circle */}
         <button onClick={toggleTheme} style={{

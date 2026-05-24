@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import Navbar from "@/components/Navbar";
+import PostActions from "@/components/PostActions";
+import CommentsSection from "@/components/CommentsSection";
 import { supabase, Post, readTime } from "@/lib/supabase";
 
 async function getPost(slug: string): Promise<Post | null> {
@@ -19,6 +21,7 @@ function parseMarkdown(md: string): string {
     .replace(/`(.+?)`/g, "<code>$1</code>")
     .replace(/^\> (.+)$/gm, "<blockquote>$1</blockquote>")
     .replace(/^- (.+)$/gm, "<li>$1</li>")
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px;margin:0.5rem 0;" />')
     .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
     .split("\n\n").map(p => p.startsWith("<") ? p : `<p>${p}</p>`).join("\n");
 }
@@ -33,13 +36,13 @@ export default async function PostPage({ params }: { params: { slug: string } })
     <>
       <Navbar />
       <main style={{ maxWidth: "720px", margin: "0 auto", padding: "4rem 3rem" }}>
-        {/* Back + edit */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3rem" }}>
+        {/* Back + actions */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
           <Link href="/blog" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", textDecoration: "none", letterSpacing: "0.04em" }}>← All notes</Link>
-          {isAuthor && <Link href={`/edit/${post.slug}`} className="btn-ghost" style={{ fontSize: "0.75rem", padding: "0.3rem 0.9rem" }}>Edit</Link>}
+          <PostActions slug={post.slug} isAuthor={isAuthor} />
         </div>
 
-        {/* Tags + meta */}
+        {/* Tags + read time */}
         <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1.5rem", flexWrap: "wrap", alignItems: "center" }}>
           {post.tags?.map((t) => <span key={t} className="tag">{t}</span>)}
           <span className="read-time" style={{ marginLeft: "auto" }}>{readTime(post.content)}</span>
@@ -56,6 +59,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
 
         <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginBottom: "2.5rem" }}>
           {new Date(post.created_at).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          {post.author_name && <span style={{ marginLeft: "1rem" }}>· by {post.author_name}</span>}
         </p>
 
         {/* Divider */}
@@ -64,11 +68,14 @@ export default async function PostPage({ params }: { params: { slug: string } })
         {/* Content */}
         <article className="prose-content" dangerouslySetInnerHTML={{ __html: parseMarkdown(post.content) }} />
 
-        {/* Bottom */}
+        {/* Bottom nav */}
         <div style={{ marginTop: "4rem", paddingTop: "2rem", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between" }}>
           <Link href="/blog" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--muted)", textDecoration: "none" }}>← All notes</Link>
           {isAuthor && <Link href="/write" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}>Write another →</Link>}
         </div>
+
+        {/* Comments */}
+        <CommentsSection slug={post.slug} />
       </main>
     </>
   );
