@@ -66,9 +66,9 @@ export default function HomeClient({ posts, allTags, likeCounts }: { posts: Post
     return () => obs.disconnect();
   }, []);
 
-  const sqColor = dark ? "#6a9fd8" : "#4a7fc1";
-  const labelColor = dark ? "#4a7fc1" : "#1a3a6e";
-  const textColor = dark ? "rgba(200,212,232,0.55)" : "rgba(10,30,60,0.7)";
+  const sqColor = dark ? "#90c4f8" : "#4a7fc1";
+  const labelColor = dark ? "#7eb3ff" : "#1a3a6e";
+  const textColor = dark ? "rgba(200,212,232,0.85)" : "rgba(10,30,60,0.85)";
 
   return (
     <>
@@ -91,7 +91,7 @@ export default function HomeClient({ posts, allTags, likeCounts }: { posts: Post
               borderRadius: "4px",
               top: `${sq.t * 4}px`,
               left: `${sq.l}%`,
-              opacity: 0.55,
+              opacity: 0.8,
               animation: `sqFloat ${sq.d} ease-in-out infinite ${sq.dl}`,
               transition: "background 0.3s",
             }} />
